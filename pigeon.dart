@@ -11,5 +11,6 @@ import 'package:pigeon/pigeon.dart';
 ))
 @HostApi()
 abstract class MultiEngineApi {
+  @async
   void spawnEngine(String name);
 }

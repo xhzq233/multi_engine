@@ -1,16 +1,42 @@
 # multi_engine
 
-A new Flutter project.
+two-way communication between multiple Flutter engines;
 
-## Getting Started
+# Principles
 
-This project is a starting point for a Flutter application.
+Static methods to allow for simple sharing of [SendPort]s across [Isolate]s.
 
-A few resources to get you started if this is your first Flutter project:
+All isolates share a global mapping of names to ports. An isolate can
+register a [SendPort] with a given name using [registerPortWithName];
+another isolate can then look up that port using [lookupPortByName].
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```cpp
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+// Flutter Side
+void newEngine(String name) async {
+  final receivePort = ReceivePort();
+  IsolateNameServer.registerPortWithName(receivePort.sendPort, name);
+  await MultiEngineApi().spawnEngine(name);
+
+  SendPort? secondarySendPort;
+  receivePort.listen((message) {
+    if (message is SendPort) {
+      secondarySendPort ??= message;
+    }
+  });
+}
+
+@pragma('vm:entry-point')
+void _secondaryEntry(List<String> args) {
+  final primarySendPortName = args[0];
+  final secondaryReceivePort = ReceivePort();
+  final primarySendPort = IsolateNameServer.lookupPortByName(primarySendPortName);
+  if (primarySendPort == null) {
+    throw Exception('Unable to find primarySendPort');
+  }
+
+  primarySendPort.send(secondaryReceivePort.sendPort);
+  secondaryReceivePort.listen((message) {});
+}
+
+```

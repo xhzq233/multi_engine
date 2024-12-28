@@ -1,43 +1,34 @@
 /// multi_engine - engine_communication
 /// Created by xhz on 9/21/24
 
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
 import 'multi_engine.g.dart';
 
-
-void newEngine(String name) {
-  MultiEngineApi().spawnEngine(name);
-
-  // 1. Spawn two-way engine communication
-  final SendPort? sendPort = IsolateNameServer.lookupPortByName(name);
-
-  if (sendPort == null) {
-    throw Exception('Could not find port for name: $name');
-  }
-
+void newEngine(String name) async {
   final receivePort = ReceivePort();
-  sendPort.send(receivePort.sendPort);
+  IsolateNameServer.registerPortWithName(receivePort.sendPort, name);
+  await MultiEngineApi().spawnEngine(name);
 
-  // 2. Listen for messages from the other isolate
+  SendPort? secondarySendPort;
   receivePort.listen((message) {
-
+    if (message is SendPort) {
+      secondarySendPort ??= message;
+    }
   });
 }
 
 @pragma('vm:entry-point')
 void _secondaryEntry(List<String> args) {
-  // 1. Spawn two-way engine communication
-  final sendPortName = args[0];
-  final receivePort = ReceivePort();
-  IsolateNameServer.registerPortWithName(receivePort.sendPort, sendPortName);
+  final primarySendPortName = args[0];
+  final secondaryReceivePort = ReceivePort();
+  final primarySendPort = IsolateNameServer.lookupPortByName(primarySendPortName);
+  if (primarySendPort == null) {
+    throw Exception('Unable to find primarySendPort');
+  }
 
-  // 2. Listen for messages from the other isolate
-  receivePort.listen((message) {
-    // 3. Handle messages from the other isolate
-    if (message is SendPort) {
-      // 4. Send messages to the other isolate
-    }
-  });
+  primarySendPort.send(secondaryReceivePort.sendPort);
+  secondaryReceivePort.listen((message) {});
 }
