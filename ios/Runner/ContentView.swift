@@ -10,27 +10,17 @@ import CoreData
 import Flutter
 
 struct ContentView: View {
-    @EnvironmentObject var flutterDependencies: FlutterDependencies
+    @EnvironmentObject var flutterDependencies: AppDelegate
 
     @State var state = false
     var body: some View {
         ScrollView {
             Text("iOS View")
-
-            Button("Present view") {
-                flutterDependencies.presentFlutter()
-            }
-            .padding()
-
-            Button("Show view") {
-                flutterDependencies.showFlutter()
+            
+            Button("Push view") {
+                flutterDependencies.pushFlutter()
             }
             .padding()
         }
     }
-}
-
-
-#Preview {
-    ContentView()
 }
